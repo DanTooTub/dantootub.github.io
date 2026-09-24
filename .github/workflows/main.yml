@@ -1,0 +1,53 @@
+name: Build & Patch Merlin Kernel for APatch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@v10
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libncurses-dev git zip unzip clang lld llvm libelf-dev
+
+      - name: Clone kernel source
+        run: |
+          git clone https://github.com/LineageOS/android_kernel_xiaomi_mt6768.git -b lineage-22.1 kernel
+          cd kernel
+          # Вшиваем нужные символы ядра прямо перед сборкой
+          echo "CONFIG_KALLSYMS=y" >> arch/arm64/configs/merlin_defconfig
+          echo "CONFIG_KALLSYMS_ALL=y" >> arch/arm64/configs/merlin_defconfig
+          echo "CONFIG_KPROBES=y" >> arch/arm64/configs/merlin_defconfig
+
+      - name: Build Kernel
+        run: |
+          cd kernel
+          export ARCH=arm64
+          make O=out merlin_defconfig
+          make -j$(nproc) O=out CC=clang
+
+      - name: Download KernelPatch Tools
+        run: |
+          wget https://github.com/bmax121/KernelPatch/releases/download/0.13.9/kptools-linux
+          wget https://github.com/bmax121/KernelPatch/releases/download/0.13.9/kpimg-android
+          chmod +x kptools-linux
+
+      - name: Patch Kernel
+        run: |
+          ./kptools-linux -p -i kernel/out/arch/arm64/boot/Image.gz-dtb -k kpimg-android -s "SqattackUadW4K2026" -o Image.gz-dtb-patched
+
+      - name: Upload Patched Kernel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: patched-kernel
+          path: Image.gz-dtb-patched
