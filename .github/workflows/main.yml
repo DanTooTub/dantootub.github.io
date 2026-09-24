@@ -22,7 +22,7 @@ jobs:
 
       - name: Clone kernel source
         run: |
-          git clone https://github.com/LineageOS/android_kernel_xiaomi_mt6768.git -b lineage-22.1 kernel
+          git clone https://github.com/LineageOS/android_kernel_xiaomi_mt6768.git -b lineage-23.2
           cd kernel
           # Вшиваем нужные символы ядра прямо перед сборкой
           echo "CONFIG_KALLSYMS=y" >> arch/arm64/configs/merlin_defconfig
